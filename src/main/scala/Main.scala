@@ -10,8 +10,7 @@ object Main {
 
     val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
 
-    println(tsp)
-    sys.exit(0)
+    println(s"TSP: ${tsp}")
 
     val NumOfTown : Int    = 30
     val NumOfAgent: Int    = 20
@@ -21,8 +20,12 @@ object Main {
     Random.setSeed(2)
     val random: Random = new Random()
 
-    val towns     : Seq[Int]        = 0 until NumOfTown
-    val positions : Seq[(Int, Int)] = (0 until NumOfTown).map{i => (random.nextInt(100)+1, random.nextInt(100)+1)}
+    val nodeCoordSection: Seq[(Double, Double)] = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt-1, xy)}.toSeq.sortBy(_._1).map(_._2)
+
+    //    val towns     : Seq[Int]              = 0 until NumOfTown
+    //    val positions : Seq[(Double, Double)] = (0 until NumOfTown).map{i => ((random.nextInt(100)+1).toDouble, (random.nextInt(100)+1).toDouble)}
+    val towns     : Seq[Int]             = tsp.nodeCoordSection.keys.map{e => e.toInt - 1}.toSeq // TODO Change better way
+    val positions: Seq[(Double, Double)] = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt-1, xy)}.toSeq.sortBy(_._1).map(_._2) // TODO Change better way
 
     val roads    : mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
     var pheromone: mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
@@ -85,6 +88,7 @@ object Main {
       lastPheno = pheromone.values.sum
     }
     println(bestAgent.getWay)
+    saveDat(s"output/best.dat", bestAgent.getWay, positions)
   }
 
   /**
@@ -93,10 +97,10 @@ object Main {
     * @param route
     * @param positions
     */
-  private def saveDat(filePath: String, route: Seq[Int], positions: Seq[(Int, Int)]): Unit = {
+  private def saveDat(filePath: String, route: Seq[Int], positions: Seq[(Double, Double)]): Unit = {
     val out: PrintWriter = new PrintWriter(new File(filePath))
     for(i <- route){
-      val position: (Int, Int) = positions(i)
+      val position: (Double, Double) = positions(i)
       out.println(s"${position._1} ${position._2}")
     }
     out.println(s"${positions.head._1} ${positions.head._2}")
