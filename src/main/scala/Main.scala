@@ -1,5 +1,7 @@
 // (from: https://qiita.com/EnsekiTT/items/9b13ceba391221687f42)
 
+import java.io.{File, PrintWriter}
+
 import scala.util.Random
 import scala.collection.mutable
 
@@ -55,6 +57,10 @@ object Main {
         if (minLength == null || minLength > length) {
           minLength = length
           bestAgent = k
+          println(s"k.way: ${k.getWay}")
+          println(s"minLength: ${minLength}")
+
+          saveDat(s"output/${i}-${m}.dat", k.getWay, positions)
         }
       }
       println("今" + i + "番目のありんこたちが仕事をしました。")
@@ -73,5 +79,21 @@ object Main {
       lastPheno = pheromone.values.sum
     }
     println(bestAgent.getWay)
+  }
+
+  /**
+    * Save route in .dat file to plot by gnuplot
+    * @param filePath
+    * @param route
+    * @param positions
+    */
+  private def saveDat(filePath: String, route: Seq[Int], positions: Seq[(Int, Int)]): Unit = {
+    val out: PrintWriter = new PrintWriter(new File(filePath))
+    for(i <- route){
+      val position: (Int, Int) = positions(i)
+      out.println(s"${position._1} ${position._2}")
+    }
+    out.println(s"${positions.head._1} ${positions.head._2}")
+    out.close()
   }
 }
