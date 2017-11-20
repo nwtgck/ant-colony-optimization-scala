@@ -7,6 +7,12 @@ import scala.collection.mutable
 
 object Main {
   def main(args: Array[String]): Unit = {
+
+    val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
+
+    println(tsp)
+    sys.exit(0)
+
     val NumOfTown : Int    = 30
     val NumOfAgent: Int    = 20
     val NumOfSolve: Int    = 500
