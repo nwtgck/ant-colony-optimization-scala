@@ -4,9 +4,9 @@ import scala.util.control.Breaks
 
 class Agent(random: Random, towns: Seq[Int], roads : Map[(Int, Int), Double], start: Int, pheromone: Map[(Int, Int), Double]) {
   var current: Int    = start
-  var alpha  : Double = 1.0
-  var beta   : Double = 3
-  var Q      : Int    = 100
+  val alpha  : Double = 1.0
+  val beta   : Double = 3
+  val Q      : Int    = 100
 
   val whole    : Seq[Int] = towns
   var notVisied: Seq[Int] = dropFirstMatch(towns, start)
@@ -43,7 +43,7 @@ class Agent(random: Random, towns: Seq[Int], roads : Map[(Int, Int), Double], st
   def agentwalk(): Seq[Int] = {
     for(i <- whole){
       val prob  : Map[Int, Double] = probability
-      var choice: Double           =  random.nextDouble()
+      var choice: Double           = random.nextDouble()
       var nextT : (Int, Double)    = null // TODO Not to use null
       val b     : Breaks           = new Breaks
       b.breakable {
