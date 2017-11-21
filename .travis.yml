@@ -1,0 +1,6 @@
+# This is a just working test
+
+language: scala
+
+script:
+  - sbt run
