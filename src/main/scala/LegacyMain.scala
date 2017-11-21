@@ -5,8 +5,8 @@ import java.io.{File, PrintWriter}
 import scala.collection.mutable
 import scala.util.Random
 
-object LegacyAcoSolver {
-  def solve(): Unit = {
+object LegacyMain {
+  def main(args: Array[String]): Unit = {
     val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
 //    val tsp: Tsp = TspReader.read(new File("./tsp/simple.tsp"))
 //    val tsp: Tsp = TspReader.read(new File("./tsp/simple2.tsp"))

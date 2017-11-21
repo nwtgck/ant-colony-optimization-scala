@@ -3,7 +3,7 @@
 language: scala
 
 script:
-  - sbt run # Working test
+  - sbt "runMain Main" # Working test
 
 # To avoid `java.awt.HeadlessException`
 # (from: https://jnorthr.wordpress.com/tag/java-awt-headlessexception/)
