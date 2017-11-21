@@ -3,66 +3,13 @@ import java.io.File
 import scala.util.Random
 import scala.util.control.Breaks
 
-case class AcoOption(nIters      : Int=100,
-                     nAnts       : Int =20,
-                     alpha      : Double=1.0,
-                     beta       : Double=3.0,
-                     q          : Double=100.0,
-                     ro         : Double=0.4,
-                     outPath    : String="./output",
-                     randomSeed : Int=2,
-                     tspPath    : String="./tsp/wi29.tsp"
-                    )
+
 
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // Create an option parser
-    val optionParser = new scopt.OptionParser[AcoOption]("TSP solver by Ant Colony Optimization") {
-
-      help("help").text("prints this usage text")
-
-      opt[Int]('i', "n-iters") action {(x, c) =>
-        c.copy(nIters=x)
-      } text ("The number of iteration")
-
-      opt[Int]('a', "n-ants") action {(x, c) =>
-        c.copy(nAnts=x)
-      } text ("The number of ants")
-
-      opt[Double]("alpha") action {(x, c) =>
-        c.copy(alpha=x)
-      } text ("alpha")
-
-      opt[Double]("beta") action {(x, c) =>
-        c.copy(beta=x)
-      } text ("beta")
-
-      opt[Double]("q") action {(x, c) =>
-        c.copy(q=x)
-      } text ("Q")
-
-      opt[Double]("ro") action {(x, c) =>
-        c.copy(ro=x)
-      } text ("ro")
-
-      opt[String]("outpath") action {(x, c) =>
-        c.copy(outPath=x)
-      } text ("output directory path")
-
-      opt[Int]("seed") action {(x, c) =>
-        c.copy(randomSeed=x)
-      } text ("random seed")
-
-      arg[String]("<path of .tsp>").optional().action{(x, c) =>
-        c.copy(tspPath=x)
-      }
-    }
-
-
     // Parse option
-    val acoOptionOpt: Option[AcoOption] = optionParser.parse(args, AcoOption())
-
+    val acoOptionOpt: Option[AcoOption] = AcoOptionParser.parse(args, AcoOption())
 
     acoOptionOpt match {
       case Some(acoOption) =>
