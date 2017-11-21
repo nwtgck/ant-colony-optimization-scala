@@ -1,9 +1,11 @@
+// (from: https://qiita.com/EnsekiTT/items/9b13ceba391221687f42)
+
 import java.io.{File, PrintWriter}
 
 import scala.collection.mutable
 import scala.util.Random
 
-object LegacyTspSolver {
+object LegacyAcoSolver {
   def solve(): Unit = {
     val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
 //    val tsp: Tsp = TspReader.read(new File("./tsp/simple.tsp"))

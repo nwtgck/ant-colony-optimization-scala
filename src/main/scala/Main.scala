@@ -1,12 +1,215 @@
-// (from: https://qiita.com/EnsekiTT/items/9b13ceba391221687f42)
-
-import java.io.{File, PrintWriter}
+import java.io.File
 
 import scala.util.Random
-import scala.collection.mutable
+import scala.util.control.Breaks
 
 object Main {
   def main(args: Array[String]): Unit = {
-    LegacyTspSolver.solve()
+    val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
+    println(tsp)
+
+    val random: Random = new Random(seed=2)
+
+    // The number of iteration
+    val NIters: Int = 300
+
+    // The number of ants
+    val NAnts: Int = 20
+
+    // All cities
+    val allCityNames         : Seq[CityName]                   = tsp.nodeCoordSection.keys.toSeq
+    // Key: CityName, Value: Position
+    val cityNameToPosition: Map[CityName, (Double, Double)] = tsp.nodeCoordSection
+
+    // Initialize pheromone with random
+    val edgeToPheromone: Map[(CityName, CityName), Double]          = Map.empty.withDefault(_ => random.nextDouble())
+
+
+    // Key: edge between two cities, Value: Distance
+    val edgeToDistance: Map[(CityName, CityName), Double] =
+      (for{
+        c1 <- allCityNames
+        c2 <- allCityNames
+        if c1 != c2
+      } yield {
+        val (x1, y1)         = cityNameToPosition(c1)
+        val (x2, y2)         = cityNameToPosition(c2)
+        val distance: Double = Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2))
+        ((c1, c2), distance)
+      }).toMap
+
+    println(s"edgeToDistance: $edgeToDistance")
+
+
+    // To be minimum length (distance)
+    var minDistance: Double           = Double.MaxValue
+
+    var bestOpt: Option[(Seq[CityName], Double)] = None
+
+    var lastPheno: Double           = 0.0
+
+
+    val alpha  : Double = 1.0
+    val beta   : Double = 3.0
+    val q      : Double = 100.0
+
+
+
+    var pheros: Seq[Map[(CityName, CityName), Double]] = Seq.empty
+
+    for(nItr <- 1 to NIters) {
+      for (m <- 1 to NAnts) {
+
+        var current: CityName = CityName("1") // TODO Hard cording
+
+        var visitedCityNames: Seq[CityName] = Seq(current)
+        var unvisitedCityNames: Seq[CityName] = allCityNames.filter(_ != current) // TODO Change to better way
+
+        var edgeToIsVisited: Map[(CityName, CityName), Boolean] =
+          (for {
+            c1 <- allCityNames
+            c2 <- allCityNames
+            if c1 != c2
+          } yield {
+            ((c1, c2), false)
+          }).toMap
+
+        // For each city
+        for (_ <- allCityNames) {
+          val prob: Map[CityName, Double] = probability(edgeToPheromone, edgeToDistance, unvisitedCityNames, alpha, beta)(current)
+
+          var nextCityNameOpt: Option[CityName] = None
+          val b: Breaks = new Breaks
+          b.breakable {
+            var choice: Double = random.nextDouble()
+            for ((cityName, p) <- prob) {
+              choice = choice - p
+              if (choice < 0) {
+                nextCityNameOpt = Some(cityName)
+                b.break()
+              }
+            }
+          }
+
+          nextCityNameOpt match {
+            case Some(nextCityName) =>
+              edgeToIsVisited = edgeToIsVisited.updated((current, nextCityName), true)
+              current = nextCityName
+              visitedCityNames :+= nextCityName
+              unvisitedCityNames = unvisitedCityNames.filter(_ != nextCityName) // TODO Change to better way
+            case None =>
+              System.err.println("Logical error: nextCityNameOpt is None!")
+          }
+
+        }
+
+        val totalDistance: Double = calcVisitedDistance(visitedCityNames, edgeToDistance)
+        pheros :+= deltaPhero(q, visitedCityNames, edgeToDistance, edgeToPheromone, edgeToIsVisited)
+
+        def updateBest(): Unit = {
+          bestOpt = Some((visitedCityNames, totalDistance))
+          minDistance = totalDistance
+
+          println(s"====== minDistance: ${minDistance} ======")
+        }
+
+        bestOpt match {
+          case Some(best) =>
+            if (best._2 > totalDistance) {
+              updateBest()
+            }
+          case None =>
+            updateBest()
+        }
+
+      }
+    }
   }
+
+//  def walk() = {
+//
+//  }
+
+  def assessment(edgeToPheromone: Map[(CityName, CityName), Double],
+                 edgeToDistance: Map[(CityName, CityName), Double],
+                 alpha: Double,
+                 beta: Double,
+                 notVisied: Seq[CityName]
+                )
+                (i: CityName,
+                 j: CityName
+                ): Double =
+  {
+    val numerator  : Double = Math.pow(edgeToPheromone(i, j), alpha) * Math.pow(1.0/edgeToDistance(i, j), beta)
+    val denominator: Double = notVisied.map{l => l
+      Math.pow(edgeToPheromone(i, l), alpha) * Math.pow(1.0/edgeToDistance(i, l), beta)
+    }.sum
+    numerator / denominator
+  }
+
+
+  def probability(edgeToPheromone: Map[(CityName, CityName), Double],
+                  edgeToDistance: Map[(CityName, CityName), Double],
+                  notVisied: Seq[CityName],
+                  alpha: Double,
+                  beta: Double
+                 )
+                 (i: CityName
+                 ): Map[CityName, Double] =
+    (for{
+      m <- notVisied
+    } yield {
+      val ass     : (CityName, CityName) => Double = assessment(edgeToPheromone, edgeToDistance, alpha, beta, notVisied)
+      val mAsses  : Double                         = ass(i, m)
+      val sumAsses: Double                         = notVisied.map{n => ass(i, n)}.sum
+      (m, mAsses / sumAsses)
+    }).toMap
+
+
+  def deltaPhero(q                   : Double,
+                 visitedCityNames    : Seq[CityName],
+                 edgeToDistance  : Map[(CityName, CityName), Double],
+                 edgeToPheromone     : Map[(CityName, CityName), Double],
+                 edgeToIsVisited     : Map[(CityName, CityName), Boolean]
+                ): Map[(CityName, CityName), Double] = {
+
+    val visitedDistance: Double = calcVisitedDistance(visitedCityNames, edgeToDistance)
+
+    (for(i <- edgeToPheromone.keys) yield {
+      val v =
+        if(edgeToIsVisited(i))
+          q / visitedDistance
+        else
+          0
+      (i, v)
+    }).toMap
+  }
+
+  def calcVisitedDistance(visitedCityNames  : Seq[CityName],
+                          edgeToDistance    : Map[(CityName, CityName), Double]
+                         ): Double =
+
+    if(visitedCityNames.length <= 1){
+      0
+    } else {
+      (for((i, j) <- visitedCityNames.zip(visitedCityNames.drop(1)))
+        yield edgeToDistance(i, j))
+      .sum
+    }
+
+
+  def updatedPhero(ro                 : Double,
+                   edgeToPheromone    : Map[(CityName, CityName), Double],
+                   edgeToPheromoneSeq : Seq[Map[(CityName, CityName), Double]]
+                  ): Map[(CityName, CityName), Double] =
+  {
+    for((i, pheromon) <- edgeToPheromone) yield {
+      (i, ro * pheromon + (1.0 - ro) * edgeToPheromoneSeq.map { k => k(i) }.sum)
+    }
+  }
+
+
+
+
+
 }
