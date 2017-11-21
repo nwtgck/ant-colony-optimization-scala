@@ -30,6 +30,33 @@ object PngSaver {
   }
 
   /**
+    * Save route in .png file
+    * @param filePath
+    * @param figureTitle
+    * @param cityNames
+    * @param cityNameToPosition
+    */
+  def savePng2(filePath: String, figureTitle: String, cityNames: Seq[CityName], cityNameToPosition:  Map[CityName, (Double, Double)]): Unit = {
+    import breeze.plot._
+
+    val f = Figure()
+    f.visible = false
+    val p = f.subplot(0)
+
+    var prePos: (Double, Double) = cityNameToPosition(cityNames.head)
+
+    for(i <- cityNames.drop(1)){
+      val position: (Double, Double) = cityNameToPosition(i)
+      p += drawedLine(prePos, position)
+      prePos = position
+    }
+
+    p += drawedLine(prePos, cityNameToPosition(cityNames.head))
+
+    f.saveas(filePath)
+  }
+
+  /**
     * Draw line from p1 to p2
     * @param p1
     * @param p2

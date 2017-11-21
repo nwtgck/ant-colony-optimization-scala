@@ -21,7 +21,7 @@ object LegacyAcoSolver {
     val random: Random = new Random()
 
 
-    val sorted = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt, xy)}.toSeq.sortBy(_._1)
+    val sorted = tsp.nodeCoordSection.map{case (key, xy) => (key.value.toInt, xy)}.toSeq.sortBy(_._1)
     val towns     : Seq[Int]              = sorted.map{e => e._1 - 1} // TODO Change better way
     val positions : Seq[(Double, Double)] = sorted.map(_._2) // TODO Change better way
 

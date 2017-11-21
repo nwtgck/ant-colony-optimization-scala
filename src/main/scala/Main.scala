@@ -57,12 +57,18 @@ object Main {
 
     var pheros: Seq[Map[(CityName, CityName), Double]] = Seq.empty
 
+    // Make output directory if need
+    val outputDir = new File("./output") // TODO Hard cording
+    if(!outputDir.exists()){
+      outputDir.mkdir()
+    }
+
     for(nItr <- 1 to NIters) {
       for (m <- 1 to NAnts) {
 
         var current: CityName = CityName("1") // TODO Hard cording
 
-        var visitedCityNames: Seq[CityName] = Seq(current)
+        var visitedCityNames  : Seq[CityName] = Seq(current)
         var unvisitedCityNames: Seq[CityName] = allCityNames.filter(_ != current) // TODO Change to better way
 
         var edgeToIsVisited: Map[(CityName, CityName), Boolean] =
@@ -74,8 +80,8 @@ object Main {
             ((c1, c2), false)
           }).toMap
 
-        // For each city
-        for (_ <- allCityNames) {
+
+        while (unvisitedCityNames.nonEmpty) {
           val prob: Map[CityName, Double] = probability(edgeToPheromone, edgeToDistance, unvisitedCityNames, alpha, beta)(current)
 
           var nextCityNameOpt: Option[CityName] = None
@@ -98,7 +104,7 @@ object Main {
               visitedCityNames :+= nextCityName
               unvisitedCityNames = unvisitedCityNames.filter(_ != nextCityName) // TODO Change to better way
             case None =>
-              System.err.println("Logical error: nextCityNameOpt is None!")
+              System.err.println("Warning: nextCityNameOpt is None!")
           }
 
         }
@@ -109,6 +115,10 @@ object Main {
         def updateBest(): Unit = {
           bestOpt = Some((visitedCityNames, totalDistance))
           minDistance = totalDistance
+
+          println(s"visitedCityNames: $visitedCityNames")
+          println(s"unvisitedCityNames: $unvisitedCityNames")
+          PngSaver.savePng2(s"output/${nItr}-${m}.png", "TODO title", visitedCityNames, cityNameToPosition)
 
           println(s"====== minDistance: ${minDistance} ======")
         }
