@@ -9,6 +9,8 @@ object Main {
   def main(args: Array[String]): Unit = {
 
     val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
+//    val tsp: Tsp = TspReader.read(new File("./tsp/simple.tsp"))
+//    val tsp: Tsp = TspReader.read(new File("./tsp/simple2.tsp"))
 
     println(s"TSP: ${tsp}")
 
@@ -20,12 +22,13 @@ object Main {
     Random.setSeed(2)
     val random: Random = new Random()
 
-    val nodeCoordSection: Seq[(Double, Double)] = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt-1, xy)}.toSeq.sortBy(_._1).map(_._2)
 
-    //    val towns     : Seq[Int]              = 0 until NumOfTown
-    //    val positions : Seq[(Double, Double)] = (0 until NumOfTown).map{i => ((random.nextInt(100)+1).toDouble, (random.nextInt(100)+1).toDouble)}
-    val towns     : Seq[Int]             = tsp.nodeCoordSection.keys.map{e => e.toInt - 1}.toSeq // TODO Change better way
-    val positions: Seq[(Double, Double)] = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt-1, xy)}.toSeq.sortBy(_._1).map(_._2) // TODO Change better way
+    val sorted = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt, xy)}.toSeq.sortBy(_._1)
+    val towns     : Seq[Int]              = sorted.map{e => e._1 - 1} // TODO Change better way
+    val positions : Seq[(Double, Double)] = sorted.map(_._2) // TODO Change better way
+
+    println(s"towns: ${towns}")
+    println(s"positions: ${positions}")
 
     val roads    : mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
     var pheromone: mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
@@ -70,6 +73,8 @@ object Main {
           println(s"minLength: ${minLength}")
 
           saveDat(s"output/${i}-${m}.dat", k.getWay, positions)
+          PngSaver.savePng(s"output/${i}-${m}.png", "TODO fig title", bestAgent.getWay, positions)
+
         }
       }
       println("今" + i + "番目のありんこたちが仕事をしました。")
@@ -89,6 +94,7 @@ object Main {
     }
     println(bestAgent.getWay)
     saveDat(s"output/best.dat", bestAgent.getWay, positions)
+    PngSaver.savePng(s"output/best.png", "TODO fig title", bestAgent.getWay, positions)
   }
 
   /**
