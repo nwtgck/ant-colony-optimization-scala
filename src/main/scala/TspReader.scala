@@ -9,12 +9,12 @@ object TspReader {
   def read(file: File): Tsp = {
     var isReadingNODE_COORD_SECTION: Boolean = false
 
-    var tspName       : Option[String]         = None
+    var tspName       : Option[String]       = None
     var tspType       : Option[TspType]        = None
     var dimension     : Option[Int]            = None
     var edgeWeightType: Option[EdgeWeightType] = None
 
-    val nodeCoordSection: mutable.Map[String, (Double, Double)] = mutable.Map.empty
+    val nodeCoordSection: mutable.Map[CityName, (Double, Double)] = mutable.Map.empty
 
     val b : Breaks           = new Breaks
     b.breakable {
@@ -23,10 +23,11 @@ object TspReader {
           line.trim match {
             case "EOF" => b.break()
             case _     =>
-              val Array(pointName, xStr, yStr) = line.split(" ")
-              val x: Double = xStr.toDouble
-              val y: Double = yStr.toDouble
-              nodeCoordSection(pointName) = (x, y)
+              val Array(cityNameStr, xStr, yStr) = line.split(" ")
+              val cityName: CityName = CityName(cityNameStr)
+              val x       : Double   = xStr.toDouble
+              val y       : Double   = yStr.toDouble
+              nodeCoordSection(cityName) = (x, y)
           }
         } else {
           line.trim match {

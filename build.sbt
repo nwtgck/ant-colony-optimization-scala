@@ -7,7 +7,10 @@ scalaVersion := "2.11.8"
 libraryDependencies ++= Seq(
   // ScalaNLP (Natural Language Processing)
   "org.scalanlp" %% "breeze" % "0.12",
-  // ScalaNLP（プロット用）
+  // ScalaNLP (For plotting)
   "org.scalanlp" %% "breeze-viz" % "0.12",
-  "org.scalanlp" %% "breeze-natives" % "0.12" // これがないと「Failed to load implementation from: com.github.fommil.netlib.NativeRefBLAS」という警告が実行時に出る（エラーではないので計算はちゃんとしてくれる）（多分これがあると高速に行列演算ができるのだと思う）
+  "org.scalanlp" %% "breeze-natives" % "0.12", // If none, it warns "Failed to load implementation from: com.github.fommil.netlib.NativeRefBLAS"  (this will accelerate speed)
+
+  // Option parser
+  "com.github.scopt" %% "scopt" % "3.6.0"
 )

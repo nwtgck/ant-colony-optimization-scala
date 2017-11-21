@@ -1,123 +1,222 @@
-// (from: https://qiita.com/EnsekiTT/items/9b13ceba391221687f42)
-
-import java.io.{File, PrintWriter}
+import java.io.File
 
 import scala.util.Random
-import scala.collection.mutable
+import scala.util.control.Breaks
+
+case class AcoOption(nIters      : Int=100,
+                     nAnts       : Int =20,
+                     alpha      : Double=1.0,
+                     beta       : Double=3.0,
+                     q          : Double=100.0,
+                     ro         : Double=0.4,
+                     outPath    : String="./output",
+                     randomSeed : Int=2,
+                     tspPath    : String="./tsp/wi29.tsp"
+                    )
 
 object Main {
   def main(args: Array[String]): Unit = {
 
-    val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
-//    val tsp: Tsp = TspReader.read(new File("./tsp/simple.tsp"))
-//    val tsp: Tsp = TspReader.read(new File("./tsp/simple2.tsp"))
+    // Create an option parser
+    val optionParser = new scopt.OptionParser[AcoOption]("TSP solver by Ant Colony Optimization") {
 
-    println(s"TSP: ${tsp}")
+      help("help").text("prints this usage text")
 
-    val NumOfTown : Int    = 30
-    val NumOfAgent: Int    = 20
-    val NumOfSolve: Int    = 500
-    val ro        : Double = 0.4
+      opt[Int]('i', "n-iters") action {(x, c) =>
+        c.copy(nIters=x)
+      } text ("The number of iteration")
 
-    Random.setSeed(2)
-    val random: Random = new Random()
+      opt[Int]('a', "n-ants") action {(x, c) =>
+        c.copy(nAnts=x)
+      } text ("The number of ants")
+
+      opt[Double]("alpha") action {(x, c) =>
+        c.copy(alpha=x)
+      } text ("alpha")
+
+      opt[Double]("beta") action {(x, c) =>
+        c.copy(beta=x)
+      } text ("beta")
+
+      opt[Double]("q") action {(x, c) =>
+        c.copy(q=x)
+      } text ("Q")
+
+      opt[Double]("ro") action {(x, c) =>
+        c.copy(ro=x)
+      } text ("ro")
+
+      opt[String]("outpath") action {(x, c) =>
+        c.copy(outPath=x)
+      } text ("output directory path")
+
+      opt[Int]("seed") action {(x, c) =>
+        c.copy(randomSeed=x)
+      } text ("random seed")
+
+      arg[String]("<path of .tsp>").optional().action{(x, c) =>
+        c.copy(tspPath=x)
+      }
+    }
 
 
-    val sorted = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt, xy)}.toSeq.sortBy(_._1)
-    val towns     : Seq[Int]              = sorted.map{e => e._1 - 1} // TODO Change better way
-    val positions : Seq[(Double, Double)] = sorted.map(_._2) // TODO Change better way
-
-    println(s"towns: ${towns}")
-    println(s"positions: ${positions}")
-
-    val roads    : mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
-    var pheromone: mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
+    // Parse option
+    val acoOptionOpt: Option[AcoOption] = optionParser.parse(args, AcoOption())
 
 
+    acoOptionOpt match {
+      case Some(acoOption) =>
+        solveByAco(acoOption)
+      case None =>
+        sys.exit(1)
+    }
+  }
+
+  def solveByAco(acoOption: AcoOption): Unit = {
+    // Initialize Random generator
+    val random: Random = new Random(seed=2)
+
+    // The number of iteration
+    val NIters: Int = acoOption.nIters
+
+    // The number of ants
+    val NAnts: Int = acoOption.nAnts
+
+    val alpha  : Double = acoOption.alpha
+    val beta   : Double = acoOption.beta
+    val q      : Double = acoOption.q
+    val ro     : Double = acoOption.ro
+    val tspFilePath: String = acoOption.tspPath
+    val outputDirPath: String = acoOption.outPath
+
+    val tsp: Tsp = TspReader.read(new File(tspFilePath))
+    println(tsp)
+
+    // All cities
+    val allCityNames         : Seq[CityName]                = tsp.nodeCoordSection.keys.toSeq
+    // Key: CityName, Value: Position
+    val cityNameToPosition: Map[CityName, (Double, Double)] = tsp.nodeCoordSection
+
+    // Initialize pheromone with random
+    var edgeToPheromone: Map[(CityName, CityName), Double]  = AcoSolver.genRandomeEgeToPheromone(random, allCityNames)
+
+
+    // Key: edge between two cities, Value: Distance
+    val edgeToDistance: Map[(CityName, CityName), Double] =
+      (for{
+        c1 <- allCityNames
+        c2 <- allCityNames
+        if c1 != c2
+      } yield {
+        val (x1, y1)         = cityNameToPosition(c1)
+        val (x2, y2)         = cityNameToPosition(c2)
+        val distance: Double = Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2))
+        ((c1, c2), distance)
+      }).toMap
+
+    println(s"edgeToDistance: $edgeToDistance")
+
+
+    // To be minimum length (distance)
+    var minDistance: Double           = Double.MaxValue
+
+    var bestOpt: Option[(Seq[CityName], Double)] = None
+
+    var lastPheno: Double           = 0.0
+
+
+    var edgeToPheromoneSeq: Seq[Map[(CityName, CityName), Double]] = Seq.empty
 
     // Make output directory if need
-    val outputDir = new File("./output") // TODO Hard cording
+    val outputDir = new File(outputDirPath)
     if(!outputDir.exists()){
       outputDir.mkdir()
     }
 
-    for{
-      i <- towns
-      j <- towns
-      if i != j
-    } {
-      roads((i, j))     = Math.sqrt( Math.pow(positions(i)._1 - positions(j)._1, 2) + Math.pow(positions(i)._2 - positions(j)._2, 2))
-      pheromone((i, j)) = random.nextDouble()
-    }
+    for(nItr <- 1 to NIters) {
+      for (m <- 1 to NAnts) {
 
-    var minLength: Double = Double.MaxValue
-    var bestAgent: Agent  = null // TODO Not to use null
-    var lastPheno: Double = 0.0
+        var current: CityName = CityName("1") // TODO Hard cording
 
-    for(i <- 0 until NumOfSolve){
-      var pheros  : Seq[Map[(Int, Int), Double]] = Seq.empty
-      var topAgent: Agent                        = null // TODO Not to use null
-      var k       : Agent                        = null // TODO Not to use null
-      for(m <- 0 until NumOfAgent){
-        k =  new Agent(
-          random,
-          towns=towns,
-          roads=Map(roads.toSeq: _*),
-          start=0,
-          pheromone=Map(pheromone.toSeq: _*)
-        )
-        k.agentwalk()
-        val length = k.getLength
-        pheros :+= k.getDeltaphero
+        var visitedCityNames  : Seq[CityName] = Seq(current)
+        var unvisitedCityNames: Seq[CityName] = allCityNames.filter(_ != current) // TODO Change to better way
 
-        if(topAgent == null || topAgent.getLength > length){
-          topAgent = k // TODO Deep copy
+        var edgeToIsVisited: Map[(CityName, CityName), Boolean] =
+          (for {
+            c1 <- allCityNames
+            c2 <- allCityNames
+            if c1 != c2
+          } yield {
+            ((c1, c2), false)
+          }).toMap
+
+
+        while (unvisitedCityNames.nonEmpty) {
+          val prob: Map[CityName, Double] = AcoSolver.probability(edgeToPheromone, edgeToDistance, unvisitedCityNames, alpha, beta)(current)
+
+          var nextCityNameOpt: Option[CityName] = None
+          val b: Breaks = new Breaks
+          b.breakable {
+            var choice: Double = random.nextDouble()
+            for ((cityName, p) <- prob) {
+              choice = choice - p
+              if (choice < 0) {
+                nextCityNameOpt = Some(cityName)
+                b.break()
+              }
+            }
+          }
+
+          nextCityNameOpt match {
+            case Some(nextCityName) =>
+              edgeToIsVisited = edgeToIsVisited.updated((current, nextCityName), true)
+              current = nextCityName
+              visitedCityNames :+= nextCityName
+              unvisitedCityNames = unvisitedCityNames.filter(_ != nextCityName) // TODO Change to better way
+            case None =>
+              System.err.println("Warning: nextCityNameOpt is None!")
+          }
+
         }
 
-        if (minLength == null || minLength > length) {
-          minLength = length
-          bestAgent = k
-          println(s"k.way: ${k.getWay}")
-          println(s"minLength: ${minLength}")
+        val totalDistance: Double = AcoSolver.calcVisitedDistance(visitedCityNames, edgeToDistance)
+        edgeToPheromoneSeq :+= AcoSolver.deltaPhero(q, visitedCityNames, edgeToDistance, edgeToPheromone, edgeToIsVisited)
 
-          saveDat(s"output/${i}-${m}.dat", k.getWay, positions)
-          PngSaver.savePng(s"output/${i}-${m}.png", "TODO fig title", bestAgent.getWay, positions)
+        def updateBest(): Unit = {
+          bestOpt = Some((visitedCityNames, totalDistance))
+          minDistance = totalDistance
 
+          println(s"visitedCityNames: $visitedCityNames")
+          println(s"unvisitedCityNames: $unvisitedCityNames")
+          PngSaver.savePng2(s"${outputDirPath}/${nItr}-${m}.png", "TODO title", visitedCityNames, cityNameToPosition)
+
+          println(s"====== minDistance: ${minDistance} ======")
+        }
+
+        bestOpt match {
+          case Some(best) =>
+            if (best._2 > totalDistance) {
+              updateBest()
+            }
+          case None =>
+            updateBest()
         }
       }
-      println("今" + i + "番目のありんこたちが仕事をしました。")
-      pheromone = k.getPhero(pheromone, pheros, ro)
+      // Update edgeToPheromone
+      edgeToPheromone = AcoSolver.updatedPhero(ro, edgeToPheromone, edgeToPheromoneSeq)
 
-      if(("%.4f".format(pheromone.values.sum)).toDouble == "%.4f".format(lastPheno).toDouble){
-        pheromone = mutable.Map.empty
-        for{
-          i <- towns
-          j <- towns
-          if i != j
-        } {
-          pheromone((i, j)) = random.nextDouble()
-        }
+      if(("%.4f".format(edgeToPheromone.values.sum)).toDouble == "%.4f".format(lastPheno).toDouble){
+        edgeToPheromone = AcoSolver.genRandomeEgeToPheromone(random, allCityNames)
       }
-      lastPheno = pheromone.values.sum
+
+      lastPheno = edgeToPheromone.values.sum
     }
-    println(bestAgent.getWay)
-    saveDat(s"output/best.dat", bestAgent.getWay, positions)
-    PngSaver.savePng(s"output/best.png", "TODO fig title", bestAgent.getWay, positions)
   }
 
-  /**
-    * Save route in .dat file to plot by gnuplot
-    * @param filePath
-    * @param route
-    * @param positions
-    */
-  private def saveDat(filePath: String, route: Seq[Int], positions: Seq[(Double, Double)]): Unit = {
-    val out: PrintWriter = new PrintWriter(new File(filePath))
-    for(i <- route){
-      val position: (Double, Double) = positions(i)
-      out.println(s"${position._1} ${position._2}")
-    }
-    out.println(s"${positions.head._1} ${positions.head._2}")
-    out.close()
-  }
+
+
+
+
+
+
 }
