@@ -1,5 +1,3 @@
-import java.io.{File, PrintWriter}
-
 import breeze.plot.Series
 
 object PngSaver {
@@ -22,19 +20,11 @@ object PngSaver {
 
     for(i <- route.drop(1)){
       val position: (Double, Double) = positions(i)
-
-      println(s"${prePos} to ${position}")
       p += drawedLine(prePos, position)
-
-
       prePos = position
     }
 
     p += drawedLine(prePos, positions(route.head))
-
-    println(s"${prePos} to ${positions(route.head)}")
-
-
 
     f.saveas(filePath)
   }
@@ -52,8 +42,6 @@ object PngSaver {
     val (x1, y1) = p1
     val (x2, y2) = p2
 
-
-
     val xStart =  Math.min(x1, x2)
     val xEnd   =  Math.max(x1, x2)
 
@@ -70,11 +58,6 @@ object PngSaver {
       val y = a * x + b
       y
     }
-
-
-
-    println(x)
-    println(y)
 
     plot(x, y)
   }

@@ -22,16 +22,10 @@ object Main {
     Random.setSeed(2)
     val random: Random = new Random()
 
-//    val nodeCoordSection: Seq[(Double, Double)] = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt-1, xy)}.toSeq.sortBy(_._1).map(_._2)
-
-    //    val towns     : Seq[Int]              = 0 until NumOfTown
-    //    val positions : Seq[(Double, Double)] = (0 until NumOfTown).map{i => ((random.nextInt(100)+1).toDouble, (random.nextInt(100)+1).toDouble)}
 
     val sorted = tsp.nodeCoordSection.map{case (key, xy) => (key.toInt, xy)}.toSeq.sortBy(_._1)
     val towns     : Seq[Int]              = sorted.map{e => e._1 - 1} // TODO Change better way
     val positions : Seq[(Double, Double)] = sorted.map(_._2) // TODO Change better way
-
-//    PngSaver.savePng("output/initial.png", "TODO title", towns, positions)
 
     println(s"towns: ${towns}")
     println(s"positions: ${positions}")
@@ -78,8 +72,7 @@ object Main {
           println(s"k.way: ${k.getWay}")
           println(s"minLength: ${minLength}")
 
-//          saveDat(s"output/${i}-${m}.dat", k.getWay, positions)
-
+          saveDat(s"output/${i}-${m}.dat", k.getWay, positions)
           PngSaver.savePng(s"output/${i}-${m}.png", "TODO fig title", bestAgent.getWay, positions)
 
         }
@@ -100,7 +93,7 @@ object Main {
       lastPheno = pheromone.values.sum
     }
     println(bestAgent.getWay)
-//    saveDat(s"output/best.dat", bestAgent.getWay, positions)
+    saveDat(s"output/best.dat", bestAgent.getWay, positions)
     PngSaver.savePng(s"output/best.png", "TODO fig title", bestAgent.getWay, positions)
   }
 
