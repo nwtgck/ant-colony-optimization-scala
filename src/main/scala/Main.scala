@@ -1,5 +1,8 @@
 import java.io.File
 
+import PngSaver.drawedLine
+import breeze.plot.Figure
+
 import scala.util.Random
 import scala.util.control.Breaks
 
@@ -21,7 +24,7 @@ object Main {
 
   def solveByAco(acoOption: AcoOption): Unit = {
     // Initialize Random generator
-    val random: Random = new Random(seed=2)
+    val random: Random = new Random(seed=acoOption.randomSeed)
 
     // The number of iteration
     val NIters: Int = acoOption.nIters
@@ -79,6 +82,12 @@ object Main {
     if(!outputDir.exists()){
       outputDir.mkdir()
     }
+
+    val fOpt: Option[Figure] =
+      if(acoOption.realtimeFigure)
+        Some(Figure())
+      else None
+    var xyLimOpt: Option[((Double, Double), (Double, Double))] = None
 
     for(nItr <- 1 to NIters) {
       for (m <- 1 to NAnts) {
@@ -138,6 +147,38 @@ object Main {
           PngSaver.savePng2(s"${outputDirPath}/${nItr}-${m}.png", "TODO title", visitedCityNames, cityNameToPosition)
 
           println(s"====== minDistance: ${minDistance} ======")
+
+
+          // ======== Start Plot =============
+          fOpt match {
+            case Some(f) =>
+              val cityNames = visitedCityNames
+
+              var prePos: (Double, Double) = cityNameToPosition(cityNames.head)
+
+              f.clearPlot(0)
+              val p = f.subplot(0)
+              p.title = f"Dinstance=${minDistance}%.2f"
+
+              xyLimOpt match {
+                case Some((xLim, yLim)) =>
+                  // Set xlim and ylim
+                  p.xlim = xLim
+                  p.ylim = yLim
+                case _ => ()
+              }
+
+              for(i <- cityNames.drop(1)){
+                val position: (Double, Double) = cityNameToPosition(i)
+                p += drawedLine(prePos, position)
+                prePos = position
+              }
+
+              p += drawedLine(prePos, cityNameToPosition(cityNames.head))
+              xyLimOpt = Some((p.xlim, p.ylim))
+            case _ => ()
+          }
+          // ======== End Plot =============
         }
 
         bestOpt match {

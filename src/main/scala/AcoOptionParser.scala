@@ -35,6 +35,10 @@ object AcoOptionParser extends scopt.OptionParser[AcoOption]("TSP solver by Ant 
     c.copy(randomSeed=x)
   } text ("random seed")
 
+  opt[Unit]("realtime-figure") action{(x, c) =>
+    c.copy(realtimeFigure = true)
+  } text("Render realtime figure")
+
   arg[String]("<path of .tsp>").optional().action{(x, c) =>
     c.copy(tspPath=x)
   }

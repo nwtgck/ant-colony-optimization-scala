@@ -26,6 +26,7 @@ Usage: TSP solver by Ant Colony Optimization [options] [<path of .tsp>]
   --ro <value>           ro
   --outpath <value>      output directory path
   --seed <value>         random seed
+  --realtime-figure      Render realtime figure
   <path of .tsp> 
 ```
 
