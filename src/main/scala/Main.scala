@@ -5,9 +5,9 @@ import scala.util.control.Breaks
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
-    println(tsp)
 
+
+    // Initialize Random generator
     val random: Random = new Random(seed=2)
 
     // The number of iteration
@@ -16,13 +16,22 @@ object Main {
     // The number of ants
     val NAnts: Int = 20
 
+    val alpha  : Double = 1.0
+    val beta   : Double = 3.0
+    val q      : Double = 100.0
+    val ro     : Double = 0.4
+
+
+    val tsp: Tsp = TspReader.read(new File("./tsp/wi29.tsp"))
+    println(tsp)
+
     // All cities
-    val allCityNames         : Seq[CityName]                   = tsp.nodeCoordSection.keys.toSeq
+    val allCityNames         : Seq[CityName]                = tsp.nodeCoordSection.keys.toSeq
     // Key: CityName, Value: Position
     val cityNameToPosition: Map[CityName, (Double, Double)] = tsp.nodeCoordSection
 
     // Initialize pheromone with random
-    var edgeToPheromone: Map[(CityName, CityName), Double]  = genRandomeEgeToPheromone(random, allCityNames)
+    var edgeToPheromone: Map[(CityName, CityName), Double]  = AcoSolver.genRandomeEgeToPheromone(random, allCityNames)
 
 
     // Key: edge between two cities, Value: Distance
@@ -47,13 +56,6 @@ object Main {
     var bestOpt: Option[(Seq[CityName], Double)] = None
 
     var lastPheno: Double           = 0.0
-
-
-    val alpha  : Double = 1.0
-    val beta   : Double = 3.0
-    val q      : Double = 100.0
-    val ro     : Double = 0.4
-
 
 
     var edgeToPheromoneSeq: Seq[Map[(CityName, CityName), Double]] = Seq.empty
@@ -83,7 +85,7 @@ object Main {
 
 
         while (unvisitedCityNames.nonEmpty) {
-          val prob: Map[CityName, Double] = probability(edgeToPheromone, edgeToDistance, unvisitedCityNames, alpha, beta)(current)
+          val prob: Map[CityName, Double] = AcoSolver.probability(edgeToPheromone, edgeToDistance, unvisitedCityNames, alpha, beta)(current)
 
           var nextCityNameOpt: Option[CityName] = None
           val b: Breaks = new Breaks
@@ -109,9 +111,9 @@ object Main {
           }
 
         }
-
-        val totalDistance: Double = calcVisitedDistance(visitedCityNames, edgeToDistance)
-        edgeToPheromoneSeq :+= deltaPhero(q, visitedCityNames, edgeToDistance, edgeToPheromone, edgeToIsVisited)
+        
+        val totalDistance: Double = AcoSolver.calcVisitedDistance(visitedCityNames, edgeToDistance)
+        edgeToPheromoneSeq :+= AcoSolver.deltaPhero(q, visitedCityNames, edgeToDistance, edgeToPheromone, edgeToIsVisited)
 
         def updateBest(): Unit = {
           bestOpt = Some((visitedCityNames, totalDistance))
@@ -134,10 +136,10 @@ object Main {
         }
       }
       // Update edgeToPheromone
-      edgeToPheromone = updatedPhero(ro, edgeToPheromone, edgeToPheromoneSeq)
+      edgeToPheromone = AcoSolver.updatedPhero(ro, edgeToPheromone, edgeToPheromoneSeq)
 
       if(("%.4f".format(edgeToPheromone.values.sum)).toDouble == "%.4f".format(lastPheno).toDouble){
-        edgeToPheromone = genRandomeEgeToPheromone(random, allCityNames)
+        edgeToPheromone = AcoSolver.genRandomeEgeToPheromone(random, allCityNames)
       }
 
       lastPheno = edgeToPheromone.values.sum
@@ -146,97 +148,7 @@ object Main {
     }
   }
 
-//  def walk() = {
-//
-//  }
 
-  def genRandomeEgeToPheromone(random: Random, allCityNames: Seq[CityName]): Map[(CityName, CityName), Double] =
-    (for{
-      c1 <- allCityNames
-      c2 <- allCityNames
-      if c1 != c2
-    } yield {
-      ((c1, c2), random.nextDouble())
-    }).toMap
-
-
-  def assessment(edgeToPheromone: Map[(CityName, CityName), Double],
-                 edgeToDistance: Map[(CityName, CityName), Double],
-                 alpha: Double,
-                 beta: Double,
-                 notVisied: Seq[CityName]
-                )
-                (i: CityName,
-                 j: CityName
-                ): Double =
-  {
-    val numerator  : Double = Math.pow(edgeToPheromone(i, j), alpha) * Math.pow(1.0/edgeToDistance(i, j), beta)
-    val denominator: Double = notVisied.map{l => l
-      Math.pow(edgeToPheromone(i, l), alpha) * Math.pow(1.0/edgeToDistance(i, l), beta)
-    }.sum
-    numerator / denominator
-  }
-
-
-  def probability(edgeToPheromone: Map[(CityName, CityName), Double],
-                  edgeToDistance: Map[(CityName, CityName), Double],
-                  notVisied: Seq[CityName],
-                  alpha: Double,
-                  beta: Double
-                 )
-                 (i: CityName
-                 ): Map[CityName, Double] =
-    (for{
-      m <- notVisied
-    } yield {
-      val ass     : (CityName, CityName) => Double = assessment(edgeToPheromone, edgeToDistance, alpha, beta, notVisied)
-      val mAsses  : Double                         = ass(i, m)
-      val sumAsses: Double                         = notVisied.map{n => ass(i, n)}.sum
-      (m, mAsses / sumAsses)
-    }).toMap
-
-
-  def deltaPhero(q                   : Double,
-                 visitedCityNames    : Seq[CityName],
-                 edgeToDistance  : Map[(CityName, CityName), Double],
-                 edgeToPheromone     : Map[(CityName, CityName), Double],
-                 edgeToIsVisited     : Map[(CityName, CityName), Boolean]
-                ): Map[(CityName, CityName), Double] = {
-
-    val visitedDistance: Double = calcVisitedDistance(visitedCityNames, edgeToDistance)
-
-    (for(i <- edgeToPheromone.keys) yield {
-      val v =
-        if(edgeToIsVisited(i))
-          q / visitedDistance
-        else
-          0
-      (i, v)
-    }).toMap
-  }
-
-  def calcVisitedDistance(visitedCityNames  : Seq[CityName],
-                          edgeToDistance    : Map[(CityName, CityName), Double]
-                         ): Double =
-
-    if(visitedCityNames.length <= 1){
-      0
-    } else {
-      (for((i, j) <- visitedCityNames.zip(visitedCityNames.drop(1)))
-        yield edgeToDistance(i, j))
-      .sum
-    }
-
-
-  def updatedPhero(ro                 : Double,
-                   edgeToPheromone    : Map[(CityName, CityName), Double],
-                   edgeToPheromoneSeq : Seq[Map[(CityName, CityName), Double]]
-                  ): Map[(CityName, CityName), Double] =
-  {
-    for((i, pheromon) <- edgeToPheromone) yield {
-      (i, ro * pheromon + (1.0 - ro) * edgeToPheromoneSeq.map(k => k(i)).sum)
-    }
-  }
 
 
 
