@@ -33,6 +33,14 @@ object Main {
     val roads    : mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
     var pheromone: mutable.Map[(Int, Int), Double] = mutable.Map.empty // TODO Not to use mutable
 
+
+
+    // Make output directory if need
+    val outputDir = new File("./output") // TODO Hard cording
+    if(!outputDir.exists()){
+      outputDir.mkdir()
+    }
+
     for{
       i <- towns
       j <- towns
