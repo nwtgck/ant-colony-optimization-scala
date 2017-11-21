@@ -22,7 +22,7 @@ object Main {
     val cityNameToPosition: Map[CityName, (Double, Double)] = tsp.nodeCoordSection
 
     // Initialize pheromone with random
-    val edgeToPheromone: Map[(CityName, CityName), Double]          = Map.empty.withDefault(_ => random.nextDouble())
+    var edgeToPheromone: Map[(CityName, CityName), Double]  = genRandomeEgeToPheromone(random, allCityNames)
 
 
     // Key: edge between two cities, Value: Distance
@@ -52,10 +52,11 @@ object Main {
     val alpha  : Double = 1.0
     val beta   : Double = 3.0
     val q      : Double = 100.0
+    val ro     : Double = 0.4
 
 
 
-    var pheros: Seq[Map[(CityName, CityName), Double]] = Seq.empty
+    var edgeToPheromoneSeq: Seq[Map[(CityName, CityName), Double]] = Seq.empty
 
     // Make output directory if need
     val outputDir = new File("./output") // TODO Hard cording
@@ -110,7 +111,7 @@ object Main {
         }
 
         val totalDistance: Double = calcVisitedDistance(visitedCityNames, edgeToDistance)
-        pheros :+= deltaPhero(q, visitedCityNames, edgeToDistance, edgeToPheromone, edgeToIsVisited)
+        edgeToPheromoneSeq :+= deltaPhero(q, visitedCityNames, edgeToDistance, edgeToPheromone, edgeToIsVisited)
 
         def updateBest(): Unit = {
           bestOpt = Some((visitedCityNames, totalDistance))
@@ -131,14 +132,33 @@ object Main {
           case None =>
             updateBest()
         }
-
       }
+      // Update edgeToPheromone
+      edgeToPheromone = updatedPhero(ro, edgeToPheromone, edgeToPheromoneSeq)
+
+      if(("%.4f".format(edgeToPheromone.values.sum)).toDouble == "%.4f".format(lastPheno).toDouble){
+        edgeToPheromone = genRandomeEgeToPheromone(random, allCityNames)
+      }
+
+      lastPheno = edgeToPheromone.values.sum
+
+
     }
   }
 
 //  def walk() = {
 //
 //  }
+
+  def genRandomeEgeToPheromone(random: Random, allCityNames: Seq[CityName]): Map[(CityName, CityName), Double] =
+    (for{
+      c1 <- allCityNames
+      c2 <- allCityNames
+      if c1 != c2
+    } yield {
+      ((c1, c2), random.nextDouble())
+    }).toMap
+
 
   def assessment(edgeToPheromone: Map[(CityName, CityName), Double],
                  edgeToDistance: Map[(CityName, CityName), Double],
@@ -214,7 +234,7 @@ object Main {
                   ): Map[(CityName, CityName), Double] =
   {
     for((i, pheromon) <- edgeToPheromone) yield {
-      (i, ro * pheromon + (1.0 - ro) * edgeToPheromoneSeq.map { k => k(i) }.sum)
+      (i, ro * pheromon + (1.0 - ro) * edgeToPheromoneSeq.map(k => k(i)).sum)
     }
   }
 
