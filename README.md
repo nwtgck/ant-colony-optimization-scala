@@ -1,5 +1,7 @@
 # Ant Colony Optimization in Scala [![Build Status](https://travis-ci.org/nwtgck/ant-colony-optimization-scala.svg?branch=master)](https://travis-ci.org/nwtgck/ant-colony-optimization-scala)
 
+![Demo gif](/demos/seed-3.gif)
+
 ## How to run Main
 
 ```
